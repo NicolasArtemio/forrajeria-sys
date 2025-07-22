@@ -22,7 +22,7 @@ export class UsersService {
      const newUser = this.userRepostory.create({
     ...createUserDto,
     password: hashedPassword,
-    role: UserRole.USER, // Asignar rol por defecto
+    role: UserRole.USER, 
   });
 
     return await this.userRepostory.save(newUser);
@@ -43,4 +43,7 @@ export class UsersService {
   async remove(id: number): Promise<DeleteResult> {
     return this.userRepostory.softDelete({id});
   }
+  async findByUsername(username: string): Promise<User | null> {
+  return await this.userRepostory.findOneBy({ username });
+}
 }
