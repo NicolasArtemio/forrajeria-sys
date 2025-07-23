@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
+import { RegisterDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
@@ -15,12 +15,12 @@ export class UsersService {
     private readonly userRepostory: Repository<User>
   ) {}
 
-  async create(createUserDto: CreateUserDto):Promise<User> {
+  async create(registerDto: RegisterDto):Promise<User> {
 
-    const hashedPassword = await BcryptHelper.hashPassword(createUserDto.password);
+    const hashedPassword = await BcryptHelper.hashPassword(registerDto.password);
 
      const newUser = this.userRepostory.create({
-    ...createUserDto,
+    ...registerDto,
     password: hashedPassword,
     role: UserRole.USER, 
   });
@@ -36,9 +36,23 @@ export class UsersService {
     return await this.userRepostory.findOneBy({id});
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
+async update(id: number, updateUserDto: UpdateUserDto, role: UserRole) {
+  if (role === UserRole.USER) {
+
+    const { email, phone, password } = updateUserDto;
+    updateUserDto = {};
+
+    if (email) updateUserDto.email = email;
+    if (phone) updateUserDto.phone = phone;
+    if (password) {
+
+      const hashedPassword = await BcryptHelper.hashPassword(password)
+      updateUserDto.password = hashedPassword;
+    }
   }
+
+  return this.userRepostory.update(id, updateUserDto);
+}
 
   async remove(id: number): Promise<DeleteResult> {
     return this.userRepostory.softDelete({id});

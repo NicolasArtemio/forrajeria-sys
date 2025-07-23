@@ -1,14 +1,16 @@
 import { Transform } from "class-transformer";
-import { IsBoolean, IsEmail, IsOptional, IsString, Length, Matches, MinLength } from "class-validator";
+import { IsBoolean, IsEmail, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from "class-validator";
 
-export class CreateUserDto {
+export class RegisterDto {
 
     @IsString()
-    @MinLength(1)
+    @MaxLength(10)
+    @MinLength(4)
     @Transform(({ value }) => value.trim())
     username: string;
 
     @IsString()
+    @MaxLength(12)
     @MinLength(8)
     @Transform(({ value }) => value.trim())
     password: string;

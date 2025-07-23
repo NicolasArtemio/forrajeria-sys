@@ -14,10 +14,10 @@ export class AuthGuard implements CanActivate {
   constructor(private jwtService: JwtService) { }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('No token provided');
     }
     try {
       const payload = await this.jwtService.verifyAsync(
@@ -26,9 +26,14 @@ export class AuthGuard implements CanActivate {
           secret: jwtConstants.secret
         }
       );
-      request['user'] = payload;
+
+      request.user = {
+        id: payload.sub,
+        username: payload.username,
+        role: payload.role,
+      }
     } catch {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Invalid or expired token');
     }
     return true;
   }
