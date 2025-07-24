@@ -1,6 +1,7 @@
 import { Transform } from "class-transformer";
 import { IsBoolean, IsEmail, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from "class-validator";
 
+
 export class RegisterDto {
 
     @IsString()

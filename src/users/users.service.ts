@@ -1,63 +1,105 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { RegisterDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
-import { DeleteResult, Repository } from 'typeorm';
+import { Repository, UpdateResult } from 'typeorm';
 import { UserRole } from 'src/common/enums/user-role.enum';
 import { BcryptHelper } from 'src/common/helpers/bcrypt.helper';
 
 @Injectable()
 export class UsersService {
-
   constructor(
     @InjectRepository(User)
-    private readonly userRepostory: Repository<User>
+    private readonly userRepository: Repository<User>
   ) {}
 
-  async create(registerDto: RegisterDto):Promise<User> {
-
+  async create(registerDto: RegisterDto): Promise<User> {
     const hashedPassword = await BcryptHelper.hashPassword(registerDto.password);
 
-     const newUser = this.userRepostory.create({
-    ...registerDto,
-    password: hashedPassword,
-    role: UserRole.USER, 
-  });
+    const newUser = this.userRepository.create({
+      ...registerDto,
+      password: hashedPassword,
+      role: UserRole.USER,
+    });
 
-    return await this.userRepostory.save(newUser);
+    return await this.userRepository.save(newUser);
   }
 
- async findAll(): Promise<User[]> {
-    return this.userRepostory.find();
+  async findAll(): Promise<User[]> {
+    return this.userRepository.find({ where: { isActive: true } });
   }
 
- async findOne(id: number):Promise<User | null> {
-    return await this.userRepostory.findOneBy({id});
+  async findOne(id: number): Promise<User | null> {
+    return await this.userRepository.findOne({ where: { id, isActive: true } });
   }
 
-async update(id: number, updateUserDto: UpdateUserDto, role: UserRole) {
-  if (role === UserRole.USER) {
-
-    const { email, phone, password } = updateUserDto;
-    updateUserDto = {};
-
-    if (email) updateUserDto.email = email;
-    if (phone) updateUserDto.phone = phone;
-    if (password) {
-
-      const hashedPassword = await BcryptHelper.hashPassword(password)
-      updateUserDto.password = hashedPassword;
-    }
-  }
-
-  return this.userRepostory.update(id, updateUserDto);
-}
-
-  async remove(id: number): Promise<DeleteResult> {
-    return this.userRepostory.softDelete({id});
-  }
   async findByUsername(username: string): Promise<User | null> {
-  return await this.userRepostory.findOneBy({ username });
-}
+    return await this.userRepository.findOne({ where: { username, isActive: true } });
+  }
+
+  async update(id: number, updateUserDto: UpdateUserDto, role: UserRole): Promise<UpdateResult> {
+    if (role === UserRole.USER) {
+      const { email, phone, password } = updateUserDto;
+      updateUserDto = {};
+
+      if (email) updateUserDto.email = email;
+      if (phone) updateUserDto.phone = phone;
+      if (password) {
+        const hashedPassword = await BcryptHelper.hashPassword(password);
+        updateUserDto.password = hashedPassword;
+      }
+    }
+
+    return this.userRepository.update(id, updateUserDto);
+  }
+
+  async remove(id: number | string, requesterRole: UserRole, requesterId?: number): Promise<UpdateResult> {
+    const numericId = typeof id === 'string' ? Number(id) : id;
+    if (isNaN(numericId)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: numericId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      throw new ForbiddenException('Admin accounts cannot be deactivated');
+    }
+
+    if (requesterRole === UserRole.USER) {
+      if (numericId !== requesterId) {
+        throw new ForbiddenException('You are not allowed to deactivate another user\'s account');
+      }
+    } else if (requesterRole !== UserRole.ADMIN) {
+      throw new ForbiddenException('You do not have permission to deactivate this account');
+    }
+
+    return this.userRepository.update(numericId, { isActive: false });
+  }
+
+  async restoreOwnAccount(userId: number): Promise<UpdateResult> {
+    const user = await this.userRepository.findOneBy({ id: userId });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.role !== UserRole.USER) {
+      throw new ForbiddenException('Only regular users can restore their account');
+    }
+
+    if (user.isActive) {
+      throw new BadRequestException('Account is already active');
+    }
+
+    return this.userRepository.update(userId, { isActive: true });
+  }
 }

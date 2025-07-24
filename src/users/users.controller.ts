@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, ForbiddenException, BadRequestException, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RegisterDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -64,8 +64,34 @@ export class UsersController {
 
     return this.usersService.update(numericId, transformedDto, user.role);
   }
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+
+  @UseGuards(AuthGuard)
+  @Delete('me')
+  async deleteOwnAccount(@Req() req: AunthenticatedRequest) {
+    const userId = Number(req.user?.id);
+    if (isNaN(userId)) {
+      throw new BadRequestException('ID inválido en token');
+    }
+    return this.usersService.remove(userId, req.user.role, userId);
   }
+  @UseGuards(AuthGuard)
+  @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @Delete(':id')
+  remove(@Param('id') id: string, @Req() req: AunthenticatedRequest) {
+    const numericId = Number(id);
+    if (isNaN(numericId)) {
+      throw new BadRequestException('ID inválido');
+    }
+    const requesterRole = req.user.role;
+    return this.usersService.remove(numericId, requesterRole);
+  }
+
+  @UseGuards(AuthGuard)
+  @Patch('me/restore')
+  async restoreOwnAccount(@Req() req: AunthenticatedRequest) {
+    const userId = req.user.id;
+    return this.usersService.restoreOwnAccount(userId);
+  }
+
+
 }
