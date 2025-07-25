@@ -86,12 +86,6 @@ export class UsersController {
     return this.usersService.remove(numericId, requesterRole);
   }
 
-  @UseGuards(AuthGuard)
-  @Patch('me/restore')
-  async restoreOwnAccount(@Req() req: AunthenticatedRequest) {
-    const userId = req.user.id;
-    return this.usersService.restoreOwnAccount(userId);
-  }
 
 
 }

@@ -43,6 +43,9 @@ export class UsersService {
     return await this.userRepository.findOne({ where: { username, isActive: true } });
   }
 
+  async findByEmail(email: string): Promise<User | null> {
+  return this.userRepository.findOne({ where: { email } });
+}
   async update(id: number, updateUserDto: UpdateUserDto, role: UserRole): Promise<UpdateResult> {
     if (role === UserRole.USER) {
       const { email, phone, password } = updateUserDto;
@@ -90,10 +93,6 @@ export class UsersService {
 
     if (!user) {
       throw new NotFoundException('User not found');
-    }
-
-    if (user.role !== UserRole.USER) {
-      throw new ForbiddenException('Only regular users can restore their account');
     }
 
     if (user.isActive) {
