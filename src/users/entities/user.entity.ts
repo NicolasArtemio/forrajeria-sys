@@ -1,5 +1,6 @@
 import { UserRole } from "src/common/enums/user-role.enum";
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeorm";
+import { Order } from "src/order/entities/order.entity";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from "typeorm";
 
 @Entity()
 export class User {
@@ -24,6 +25,10 @@ export class User {
     @CreateDateColumn()
     createdAt: Date;
 
-    @Column({ type: "enum", enum: UserRole, default: UserRole.USER })
+    @Column({ type: "enum", enum: UserRole, default: UserRole.CLIENT })
     role: UserRole;
+
+    
+  @OneToMany(() => Order, order => order.client)
+  pedidos: Order[];
 }

@@ -25,7 +25,7 @@ export class UsersService {
     const newUser = this.userRepository.create({
       ...registerDto,
       password: hashedPassword,
-      role: UserRole.USER,
+      role: UserRole.CLIENT,
     });
 
     return await this.userRepository.save(newUser);
@@ -47,7 +47,7 @@ export class UsersService {
   return this.userRepository.findOne({ where: { email } });
 }
   async update(id: number, updateUserDto: UpdateUserDto, role: UserRole): Promise<UpdateResult> {
-    if (role === UserRole.USER) {
+    if (role === UserRole.CLIENT) {
       const { email, phone, password } = updateUserDto;
       updateUserDto = {};
 
@@ -77,7 +77,7 @@ export class UsersService {
       throw new ForbiddenException('Admin accounts cannot be deactivated');
     }
 
-    if (requesterRole === UserRole.USER) {
+    if (requesterRole === UserRole.CLIENT) {
       if (numericId !== requesterId) {
         throw new ForbiddenException('You are not allowed to deactivate another user\'s account');
       }

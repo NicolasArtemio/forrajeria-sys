@@ -32,7 +32,7 @@ export class UsersController {
 
     const user = req.user;
 
-    if (user.role === UserRole.USER && user.id !== +id) {
+    if (user.role === UserRole.CLIENT && user.id !== +id) {
       throw new ForbiddenException('Acces denied');
     }
     return this.usersService.findOne(+id);
@@ -54,11 +54,11 @@ export class UsersController {
 
     const user = req.user;
 
-    if (user.role === UserRole.USER && user.id !== numericId) {
+    if (user.role === UserRole.CLIENT && user.id !== numericId) {
       throw new ForbiddenException('Access denied');
     }
 
-    const transformedDto = user.role === UserRole.USER
+    const transformedDto = user.role === UserRole.CLIENT
       ? plainToClass(UpdateUserSelfDto, dto)
       : dto;
 
