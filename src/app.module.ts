@@ -4,9 +4,8 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EmailModule } from './email/email.module';
-import { OrderModule } from './order/order.module';
-import { ProductsModule } from './products/products.module';
-import { OrderItemModule } from './order-item/order-item.module';
+import { CustomerModule } from './customer/customer.module';
+
 
 @Module({
   imports: [
@@ -31,9 +30,8 @@ import { OrderItemModule } from './order-item/order-item.module';
     UsersModule,
     AuthModule,
     EmailModule,
-    OrderModule,
-    ProductsModule,
-    OrderItemModule,
+    CustomerModule,
+
   ],
   controllers: [],
   providers: [],

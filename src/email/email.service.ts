@@ -8,9 +8,9 @@ export class EmailService {
 
     constructor() {
         this.transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST, // c2631564.ferozo.com
-            port: parseInt(process.env.SMTP_PORT || '465', 10), // 465 para SSL
-            secure: process.env.SMTP_SECURE === 'true', // true porque usamos SSL
+            host: process.env.SMTP_HOST, 
+            port: parseInt(process.env.SMTP_PORT || '465', 10), 
+            secure: process.env.SMTP_SECURE === 'true',
             auth: {
                 user: process.env.SMTP_USER,
                 pass: process.env.SMTP_PASS,
@@ -33,8 +33,27 @@ export class EmailService {
             console.log('Email enviado correctamente a:', to);
         } catch (error) {
             console.error('Error enviando email:', error);
-            throw error; // O manejar el error como prefieras
+            throw error;
         }
     }
+
+    async sendResetPasswordEmail(to: string, link: string): Promise<void> {
+    try {
+        await this.transporter.sendMail({
+            from: `"Tu App" <${process.env.SMTP_USER}>`,
+            to,
+            subject: 'Restablecimiento de contraseña',
+            html: `
+                <h3>Restablecer contraseña</h3>
+                <p>Haz clic en el siguiente enlace para cambiar tu contraseña:</p>
+                <a href="${link}">${link}</a>
+            `,
+        });
+        console.log('Email de restablecimiento enviado correctamente a:', to);
+    } catch (error) {
+        console.error('Error enviando email de restablecimiento:', error);
+        throw error;
+    }
+}
 
 }

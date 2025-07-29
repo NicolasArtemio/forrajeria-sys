@@ -1,7 +1,6 @@
 import { Transform } from "class-transformer";
 import { IsBoolean, IsEmail, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from "class-validator";
 
-
 export class RegisterDto {
 
     @IsString()
@@ -26,6 +25,20 @@ export class RegisterDto {
 
     @IsOptional()
     @IsBoolean()
-    isActive: boolean;
+    isActive?: boolean;
 
+    // --- Nuevos campos para perfil de cliente ---
+    
+    @IsString()
+    @MaxLength(100)
+    address?: string;
+
+    @IsString()
+    @MaxLength(50)
+    city?: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(50)
+    location?: string;
 }

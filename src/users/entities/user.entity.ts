@@ -1,34 +1,35 @@
-import { UserRole } from "src/common/enums/user-role.enum";
-import { Order } from "src/order/entities/order.entity";
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from "typeorm";
+import { UserRole } from "../../common/enums/user-role.enum";
+import { Customer } from "../../customer/entities/customer.entity";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, OneToOne, JoinColumn } from "typeorm";
 
 @Entity()
 export class User {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @Column({ unique: true })
-    username: string;
+  @Column({ unique: true })
+  username: string;
 
-    @Column()
-    password: string;
+  @Column()
+  password: string;
 
-    @Column({ unique: true })
-    email: string;
+  @Column({ unique: true })
+  email: string;
 
-    @Column()
-    phone: string;
+  @Column()
+  phone: string;
 
-    @Column({ default: true })
-    isActive: boolean;
+  @Column({ default: true })
+  isActive: boolean;
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 
-    @Column({ type: "enum", enum: UserRole, default: UserRole.CLIENT })
-    role: UserRole;
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.CUSTOMER })
+  role: UserRole;
 
-    
-  @OneToMany(() => Order, order => order.client)
-  pedidos: Order[];
+  @OneToOne(() => Customer, profile => profile.user, { cascade: true })
+  @JoinColumn()
+  customerProfile: Customer;
 }
+

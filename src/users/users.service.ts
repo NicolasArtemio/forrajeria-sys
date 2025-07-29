@@ -9,28 +9,89 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository, UpdateResult } from 'typeorm';
-import { UserRole } from 'src/common/enums/user-role.enum';
-import { BcryptHelper } from 'src/common/helpers/bcrypt.helper';
+import { UserRole } from '../common/enums/user-role.enum';
+import { BcryptHelper } from '../common/helpers/bcrypt.helper';
+import { Customer } from '../customer/entities/customer.entity';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
-  ) {}
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(Customer)
+    private readonly customerRepository: Repository<Customer>,
 
+  ) { }
+
+  async createAdminIfNotExists(dto: RegisterDto): Promise<User> {
+    const exists = await this.userRepository.findOne({
+      where: { username: dto.username },
+    });
+
+    if (exists) {
+      throw new BadRequestException('Admin already exists');
+    }
+
+    const hashedPassword = await BcryptHelper.hashPassword(dto.password);
+
+    const user = this.userRepository.create({
+      ...dto,
+      password: hashedPassword,
+      role: UserRole.ADMIN,
+      isActive: true,
+    });
+
+    return await this.userRepository.save(user);
+  }
+
+
+  async createOwner(dto: RegisterDto, requesterRole: UserRole): Promise<User> {
+    if (requesterRole !== UserRole.ADMIN) {
+      throw new ForbiddenException('Only admins can create an owner');
+    }
+
+    const exists = await this.userRepository.findOne({ where: { username: dto.username } });
+    if (exists) {
+      throw new BadRequestException('Username already exists');
+    }
+
+    const hashedPassword = await BcryptHelper.hashPassword(dto.password);
+
+    const user = this.userRepository.create({
+      ...dto,
+      password: hashedPassword,
+      role: UserRole.OWNER,
+      isActive: true,
+    });
+
+    return await this.userRepository.save(user);
+  }
   async create(registerDto: RegisterDto): Promise<User> {
     const hashedPassword = await BcryptHelper.hashPassword(registerDto.password);
 
     const newUser = this.userRepository.create({
       ...registerDto,
       password: hashedPassword,
-      role: UserRole.CLIENT,
+      role: UserRole.CUSTOMER,
     });
 
-    return await this.userRepository.save(newUser);
-  }
+    const savedUser = await this.userRepository.save(newUser);
 
+    // Crear CustomerProfile sólo si el usuario es CUSTOMER
+    if (savedUser.role === UserRole.CUSTOMER) {
+      const profile = this.customerRepository.create({
+        user: savedUser,
+        address: registerDto.address,
+        city: registerDto.city,
+        location: registerDto.location,
+      });
+
+      await this.customerRepository.save(profile);
+    }
+
+    return savedUser;
+  }
   async findAll(): Promise<User[]> {
     return this.userRepository.find({ where: { isActive: true } });
   }
@@ -44,23 +105,24 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-  return this.userRepository.findOne({ where: { email } });
-}
+    return this.userRepository.findOne({ where: { email } });
+  }
   async update(id: number, updateUserDto: UpdateUserDto, role: UserRole): Promise<UpdateResult> {
-    if (role === UserRole.CLIENT) {
+    if (role === UserRole.CUSTOMER) {
       const { email, phone, password } = updateUserDto;
       updateUserDto = {};
 
       if (email) updateUserDto.email = email;
       if (phone) updateUserDto.phone = phone;
       if (password) {
-        const hashedPassword = await BcryptHelper.hashPassword(password);
-        updateUserDto.password = hashedPassword;
+        // Asumí que ya viene hasheada
+        updateUserDto.password = password;
       }
     }
 
     return this.userRepository.update(id, updateUserDto);
   }
+
 
   async remove(id: number | string, requesterRole: UserRole, requesterId?: number): Promise<UpdateResult> {
     const numericId = typeof id === 'string' ? Number(id) : id;
@@ -77,7 +139,7 @@ export class UsersService {
       throw new ForbiddenException('Admin accounts cannot be deactivated');
     }
 
-    if (requesterRole === UserRole.CLIENT) {
+    if (requesterRole === UserRole.CUSTOMER) {
       if (numericId !== requesterId) {
         throw new ForbiddenException('You are not allowed to deactivate another user\'s account');
       }
@@ -101,4 +163,6 @@ export class UsersService {
 
     return this.userRepository.update(userId, { isActive: true });
   }
+
+
 }

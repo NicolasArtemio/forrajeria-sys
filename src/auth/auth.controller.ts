@@ -1,11 +1,11 @@
 import { AuthService } from './auth.service';
-import { Body, Controller, HttpCode, HttpStatus, Post, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, HttpCode, HttpStatus, Post, UnauthorizedException } from '@nestjs/common';
 import { LoginDto } from './dto/login.dto';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
-import { EmailService } from 'src/email/email.service';
+import { EmailService } from '../email/email.service';
 
-@Controller('auth')
+@Controller('autenticacion')
 export class AuthController {
     constructor(
         private readonly authService: AuthService,
@@ -15,13 +15,13 @@ export class AuthController {
     ) { }
 
     @HttpCode(HttpStatus.OK)
-    @Post('login')
+    @Post('iniciar-sesion')
     login(@Body() loginDto: LoginDto) {
         return this.authService.signIn(loginDto);
     }
 
 
-    @Post('request-restore')
+    @Post('solicitar-restauracion')
     async requestRestore(@Body('email') email: string) {
         console.log('🟡 Email recibido:', email);
 
@@ -45,7 +45,7 @@ export class AuthController {
         return { message: 'Correo de restauración enviado' };
     }
 
-    @Post('restore-account')
+    @Post('restaurar-cuenta')
     async restoreAccount(@Body('token') token: string) {
         try {
             const payload = await this.jwtService.verifyAsync(token);
@@ -57,6 +57,31 @@ export class AuthController {
             console.error('Error verificando token:', error);
             throw new UnauthorizedException('Token expirado o inválido');
         }
+    }
+
+    @Post('solicitar-restablecer-password')
+    async requestPasswordReset(@Body('email') email: string): Promise<{ message: string }> {
+        if (!email) {
+            throw new BadRequestException('El campo email es obligatorio');
+        }
+
+        const token = await this.authService.requestPasswordReset(email);
+
+        const restoreLink = `http://localhost:3000/restablecer-password?token=${token}`;
+
+        // Llamás al servicio de email para enviar el link
+        await this.emailService.sendRestoreEmail(email, restoreLink);
+
+        return { message: 'Correo de restauración enviado correctamente' };
+    }
+
+    @Post('restablecer-password')
+    async resetPassword(
+        @Body('token') token: string,
+        @Body('newPassword') newPassword: string,
+    ): Promise<{ message: string }> {
+        await this.authService.resetPassword(token, newPassword);
+        return { message: 'Password successfully reset' };
     }
 
 }
