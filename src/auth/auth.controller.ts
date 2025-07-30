@@ -14,13 +14,13 @@ export class AuthController {
         private readonly emailService: EmailService
     ) { }
 
-    @HttpCode(HttpStatus.OK)
+    @HttpCode(HttpStatus.OK) 
     @Post('iniciar-sesion')
     login(@Body() loginDto: LoginDto) {
         return this.authService.signIn(loginDto);
     }
 
-
+    @HttpCode(HttpStatus.OK)
     @Post('solicitar-restauracion')
     async requestRestore(@Body('email') email: string) {
         console.log('🟡 Email recibido:', email);
@@ -39,12 +39,13 @@ export class AuthController {
         const restoreLink = `http://localhost:3000/restaurar?token=${token}`;
         console.log('🔵 Enviando mail con link:', restoreLink);
 
-        await this.emailService.sendRestoreEmail(user.email, restoreLink); // ⚠️ Probable punto de fallo
+        await this.emailService.sendRestoreEmail(user.email, restoreLink);
 
         console.log('✅ Correo enviado');
         return { message: 'Correo de restauración enviado' };
     }
 
+    @HttpCode(HttpStatus.OK)
     @Post('restaurar-cuenta')
     async restoreAccount(@Body('token') token: string) {
         try {
@@ -59,6 +60,7 @@ export class AuthController {
         }
     }
 
+    @HttpCode(HttpStatus.OK) 
     @Post('solicitar-restablecer-password')
     async requestPasswordReset(@Body('email') email: string): Promise<{ message: string }> {
         if (!email) {
@@ -73,8 +75,31 @@ export class AuthController {
         await this.emailService.sendRestoreEmail(email, restoreLink);
 
         return { message: 'Correo de restauración enviado correctamente' };
-    }
+    } 
+    //test
+    // async requestPasswordReset(@Body('email') email: string): Promise<{ message: string; token?: string }> {
+    //     if (!email) {
+    //         throw new BadRequestException('El campo email es obligatorio');
+    //     }
 
+    //     const token = await this.authService.requestPasswordReset(email);
+    //     const restoreLink = `http://localhost:3000/restablecer-password?token=${token}`;
+
+    //     await this.emailService.sendRestoreEmail(email, restoreLink);
+
+    //     //solo devolver token en modo test
+    //     const response: { message: string; token?: string } = {
+    //         message: 'Correo de restauración enviado correctamente',
+    //     };
+
+    //     if (process.env.NODE_ENV === 'test') {
+    //         response.token = token;
+    //     }
+
+    //     return response;
+    // }
+
+    @HttpCode(HttpStatus.OK)
     @Post('restablecer-password')
     async resetPassword(
         @Body('token') token: string,
@@ -83,5 +108,4 @@ export class AuthController {
         await this.authService.resetPassword(token, newPassword);
         return { message: 'Password successfully reset' };
     }
-
 }

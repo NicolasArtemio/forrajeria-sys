@@ -1,4 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Req,
+  ForbiddenException,
+  BadRequestException,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RegisterDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -10,19 +24,20 @@ import { AunthenticatedRequest } from '../common/interfaces/authenticatedrequest
 import { plainToClass } from 'class-transformer';
 import { UpdateCustomerProfileDto } from './dto/update-user-self.dto';
 
-
 @Controller('usuarios')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
- async create(@Body() registerDto: RegisterDto) {
+  @HttpCode(HttpStatus.CREATED)
+  async create(@Body() registerDto: RegisterDto) {
     return await this.usersService.create(registerDto);
   }
 
   @Post('crear-owner')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.CREATED)
   async createOwner(@Body() dto: RegisterDto, @Req() req) {
     return await this.usersService.createOwner(dto, req.user.role);
   }
@@ -30,30 +45,31 @@ export class UsersController {
   @UseGuards(AuthGuard, RolesGuard)
   @Get()
   @Roles(UserRole.OWNER, UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
   async findAll() {
     return await this.usersService.findAll();
   }
 
   @UseGuards(AuthGuard)
   @Get(':id')
+  @HttpCode(HttpStatus.OK)
   async findOne(@Param('id') id: string, @Req() req: AunthenticatedRequest) {
-
     const user = req.user;
 
     if (user.role === UserRole.CUSTOMER && user.id !== +id) {
-      throw new ForbiddenException('Acces denied');
+      throw new ForbiddenException('Access denied');
     }
+
     return await this.usersService.findOne(+id);
   }
 
-
   @UseGuards(AuthGuard)
   @Patch(':id')
-  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
-    @Req() req: AunthenticatedRequest
+    @Req() req: AunthenticatedRequest,
   ) {
     const numericId = parseInt(id, 10);
     if (isNaN(numericId)) {
@@ -66,15 +82,17 @@ export class UsersController {
       throw new ForbiddenException('Access denied');
     }
 
-    const transformedDto = user.role === UserRole.CUSTOMER
-      ? plainToClass(UpdateCustomerProfileDto, dto)
-      : dto;
+    const transformedDto =
+      user.role === UserRole.CUSTOMER
+        ? plainToClass(UpdateCustomerProfileDto, dto)
+        : dto;
 
     return await this.usersService.update(numericId, transformedDto, user.role);
   }
 
   @UseGuards(AuthGuard)
   @Delete('me')
+  @HttpCode(HttpStatus.OK)
   async deleteOwnAccount(@Req() req: AunthenticatedRequest) {
     const userId = Number(req.user?.id);
     if (isNaN(userId)) {
@@ -82,18 +100,18 @@ export class UsersController {
     }
     return await this.usersService.remove(userId, req.user.role, userId);
   }
+
   @UseGuards(AuthGuard)
   @Roles(UserRole.OWNER, UserRole.ADMIN)
   @Delete(':id')
- async remove(@Param('id') id: string, @Req() req: AunthenticatedRequest) {
+  @HttpCode(HttpStatus.OK)
+  async remove(@Param('id') id: string, @Req() req: AunthenticatedRequest) {
     const numericId = Number(id);
     if (isNaN(numericId)) {
       throw new BadRequestException('ID inválido');
     }
+
     const requesterRole = req.user.role;
     return await this.usersService.remove(numericId, requesterRole);
   }
-
- 
-
 }
