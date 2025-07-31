@@ -97,9 +97,12 @@ export class UsersService {
   }
 
   async findOne(id: number): Promise<User | null> {
+    if (typeof id !== 'number' || isNaN(id)) {
+      throw new BadRequestException('Invalid user ID');
+    }
+
     return await this.userRepository.findOne({ where: { id, isActive: true } });
   }
-
   async findByUsername(username: string): Promise<User | null> {
     return await this.userRepository.findOne({ where: { username, isActive: true } });
   }
@@ -123,8 +126,11 @@ export class UsersService {
     return this.userRepository.update(id, updateUserDto);
   }
 
-
-  async remove(id: number | string, requesterRole: UserRole, requesterId?: number): Promise<UpdateResult> {
+  async remove(
+    id: number | string,
+    requesterRole: UserRole,
+    requesterId?: number
+  ): Promise<UpdateResult> {
     const numericId = typeof id === 'string' ? Number(id) : id;
     if (isNaN(numericId)) {
       throw new BadRequestException('Invalid user ID');
@@ -135,15 +141,27 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    // Nunca permitir desactivar a un ADMIN
     if (user.role === UserRole.ADMIN) {
       throw new ForbiddenException('Admin accounts cannot be deactivated');
     }
 
+    // CUSTOMER solo puede desactivarse a sí mismo
     if (requesterRole === UserRole.CUSTOMER) {
       if (numericId !== requesterId) {
         throw new ForbiddenException('You are not allowed to deactivate another user\'s account');
       }
-    } else if (requesterRole !== UserRole.ADMIN) {
+    }
+
+    // OWNER solo puede desactivar a CUSTOMERS
+    if (requesterRole === UserRole.OWNER) {
+      if (user.role !== UserRole.CUSTOMER) {
+        throw new ForbiddenException('Owners can only deactivate customer accounts');
+      }
+    }
+
+    // ADMIN puede desactivar a cualquier rol excepto a otro ADMIN (ya validado arriba)
+    if (requesterRole !== UserRole.ADMIN && requesterRole !== UserRole.OWNER && requesterRole !== UserRole.CUSTOMER) {
       throw new ForbiddenException('You do not have permission to deactivate this account');
     }
 
@@ -163,6 +181,17 @@ export class UsersService {
 
     return this.userRepository.update(userId, { isActive: true });
   }
+
+  async findActiveUsers(): Promise<User[]> {
+
+    return this.userRepository.find({ where: { isActive: true } });
+  }
+
+
+  async findInactive(): Promise<User[]> {
+    return this.userRepository.find({ where: { isActive: false } });
+  }
+
 
 
 }

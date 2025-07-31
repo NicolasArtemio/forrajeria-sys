@@ -12,6 +12,7 @@ import {
   BadRequestException,
   HttpCode,
   HttpStatus,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RegisterDto } from './dto/create-user.dto';
@@ -26,7 +27,7 @@ import { UpdateCustomerProfileDto } from './dto/update-user-self.dto';
 
 @Controller('usuarios')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
@@ -50,10 +51,26 @@ export class UsersController {
     return await this.usersService.findAll();
   }
 
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.OWNER)
+  @Get('activo')
+  @HttpCode(HttpStatus.OK)
+  findActiveUsers() {
+    return this.usersService.findActiveUsers();
+  }
+
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('inactivo')
+  @HttpCode(HttpStatus.OK)
+  findInactive() {
+    return this.usersService.findInactive();
+  }
+
   @UseGuards(AuthGuard)
   @Get(':id')
   @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string, @Req() req: AunthenticatedRequest) {
+  async findOne(@Param('id', ParseIntPipe) id: number, @Req() req: AunthenticatedRequest) {
     const user = req.user;
 
     if (user.role === UserRole.CUSTOMER && user.id !== +id) {
@@ -114,4 +131,6 @@ export class UsersController {
     const requesterRole = req.user.role;
     return await this.usersService.remove(numericId, requesterRole);
   }
+
+
 }

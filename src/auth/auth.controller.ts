@@ -62,42 +62,42 @@ export class AuthController {
 
     @HttpCode(HttpStatus.OK) 
     @Post('solicitar-restablecer-password')
-    async requestPasswordReset(@Body('email') email: string): Promise<{ message: string }> {
-        if (!email) {
-            throw new BadRequestException('El campo email es obligatorio');
-        }
-
-        const token = await this.authService.requestPasswordReset(email);
-
-        const restoreLink = `http://localhost:3000/restablecer-password?token=${token}`;
-
-        // Llamás al servicio de email para enviar el link
-        await this.emailService.sendRestoreEmail(email, restoreLink);
-
-        return { message: 'Correo de restauración enviado correctamente' };
-    } 
-    //test
-    // async requestPasswordReset(@Body('email') email: string): Promise<{ message: string; token?: string }> {
+    // async requestPasswordReset(@Body('email') email: string): Promise<{ message: string }> {
     //     if (!email) {
     //         throw new BadRequestException('El campo email es obligatorio');
     //     }
 
     //     const token = await this.authService.requestPasswordReset(email);
+
     //     const restoreLink = `http://localhost:3000/restablecer-password?token=${token}`;
 
+    //     // Llamás al servicio de email para enviar el link
     //     await this.emailService.sendRestoreEmail(email, restoreLink);
 
-    //     //solo devolver token en modo test
-    //     const response: { message: string; token?: string } = {
-    //         message: 'Correo de restauración enviado correctamente',
-    //     };
+    //     return { message: 'Correo de restauración enviado correctamente' };
+    // } 
+    //test
+    async requestPasswordReset(@Body('email') email: string): Promise<{ message: string; token?: string }> {
+        if (!email) {
+            throw new BadRequestException('El campo email es obligatorio');
+        }
 
-    //     if (process.env.NODE_ENV === 'test') {
-    //         response.token = token;
-    //     }
+        const token = await this.authService.requestPasswordReset(email);
+        const restoreLink = `http://localhost:3000/restablecer-password?token=${token}`;
 
-    //     return response;
-    // }
+        await this.emailService.sendRestoreEmail(email, restoreLink);
+
+        //solo devolver token en modo test
+        const response: { message: string; token?: string } = {
+            message: 'Correo de restauración enviado correctamente',
+        };
+
+        if (process.env.NODE_ENV === 'test') {
+            response.token = token;
+        }
+
+        return response;
+    }
 
     @HttpCode(HttpStatus.OK)
     @Post('restablecer-password')
