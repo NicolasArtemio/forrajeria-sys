@@ -10,7 +10,8 @@ import { CustomerModule } from './customer/customer.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
+      envFilePath: '.env'
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

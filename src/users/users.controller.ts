@@ -24,6 +24,7 @@ import { UserRole } from '../common/enums/user-role.enum';
 import { AunthenticatedRequest } from '../common/interfaces/authenticatedrequest.interface';
 import { plainToClass } from 'class-transformer';
 import { UpdateCustomerProfileDto } from './dto/update-user-self.dto';
+import { validateOrReject } from 'class-validator';
 
 @Controller('usuarios')
 export class UsersController {
@@ -39,7 +40,7 @@ export class UsersController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.CREATED)
-  async createOwner(@Body() dto: RegisterDto, @Req() req) {
+  async createOwner(@Body() dto: RegisterDto, @Req() req: AunthenticatedRequest) {
     return await this.usersService.createOwner(dto, req.user.role);
   }
 
@@ -80,32 +81,51 @@ export class UsersController {
     return await this.usersService.findOne(+id);
   }
 
-  @UseGuards(AuthGuard)
-  @Patch(':id')
-  @HttpCode(HttpStatus.OK)
-  async update(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
-    @Req() req: AunthenticatedRequest,
-  ) {
-    const numericId = parseInt(id, 10);
-    if (isNaN(numericId)) {
-      throw new BadRequestException('Invalid user ID');
-    }
-
-    const user = req.user;
-
-    if (user.role === UserRole.CUSTOMER && user.id !== numericId) {
-      throw new ForbiddenException('Access denied');
-    }
-
-    const transformedDto =
-      user.role === UserRole.CUSTOMER
-        ? plainToClass(UpdateCustomerProfileDto, dto)
-        : dto;
-
-    return await this.usersService.update(numericId, transformedDto, user.role);
+ @UseGuards(AuthGuard)
+@Patch(':id')
+@HttpCode(HttpStatus.OK)
+async update(
+  @Param('id') id: string,
+  @Body() dto: UpdateUserDto,
+  @Req() req: AunthenticatedRequest,
+) {
+  const numericId = parseInt(id, 10);
+  if (isNaN(numericId)) {
+    throw new BadRequestException('Invalid user ID');
   }
+
+  const user = req.user;
+
+  if (user.role === UserRole.CUSTOMER && user.id !== numericId) {
+    throw new ForbiddenException('Access denied');
+  }
+
+  if (user.role === UserRole.CUSTOMER) {
+    // Para clientes, convertir a UpdateCustomerProfileDto
+    const transformedDto = plainToClass(UpdateCustomerProfileDto, dto);
+    try {
+      await validateOrReject(transformedDto);
+    } catch (errors) {
+      throw new BadRequestException('Validation failed');
+    }
+    if (Object.keys(transformedDto).length === 0) {
+      throw new BadRequestException('No hay datos para actualizar');
+    }
+    // Aquí llamas al método que actualiza el perfil customer
+    return this.usersService.updateCustomerProfile(numericId, transformedDto);
+  } else {
+    // Para roles ADMIN, OWNER o similares
+    try {
+      await validateOrReject(dto);
+    } catch (errors) {
+      throw new BadRequestException('Validation failed');
+    }
+    if (Object.keys(dto).length === 0) {
+      throw new BadRequestException('No hay datos para actualizar');
+    }
+    return this.usersService.update(numericId, dto, user.role);
+  }
+}
 
   @UseGuards(AuthGuard)
   @Delete('me')

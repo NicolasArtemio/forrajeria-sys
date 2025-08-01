@@ -5,6 +5,7 @@ import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { EmailService } from '../email/email.service';
 
+
 @Controller('autenticacion')
 export class AuthController {
     constructor(
@@ -14,7 +15,7 @@ export class AuthController {
         private readonly emailService: EmailService
     ) { }
 
-    @HttpCode(HttpStatus.OK) 
+    @HttpCode(HttpStatus.OK)
     @Post('iniciar-sesion')
     login(@Body() loginDto: LoginDto) {
         return this.authService.signIn(loginDto);
@@ -60,44 +61,47 @@ export class AuthController {
         }
     }
 
-    @HttpCode(HttpStatus.OK) 
+    @HttpCode(HttpStatus.OK)
     @Post('solicitar-restablecer-password')
-    // async requestPasswordReset(@Body('email') email: string): Promise<{ message: string }> {
-    //     if (!email) {
-    //         throw new BadRequestException('El campo email es obligatorio');
-    //     }
-
-    //     const token = await this.authService.requestPasswordReset(email);
-
-    //     const restoreLink = `http://localhost:3000/restablecer-password?token=${token}`;
-
-    //     // Llamás al servicio de email para enviar el link
-    //     await this.emailService.sendRestoreEmail(email, restoreLink);
-
-    //     return { message: 'Correo de restauración enviado correctamente' };
-    // } 
-    //test
-    async requestPasswordReset(@Body('email') email: string): Promise<{ message: string; token?: string }> {
+    async requestPasswordReset(@Body('email') email: string): Promise<{ message: string }> {
         if (!email) {
             throw new BadRequestException('El campo email es obligatorio');
         }
 
         const token = await this.authService.requestPasswordReset(email);
+
         const restoreLink = `http://localhost:3000/restablecer-password?token=${token}`;
 
+        // Llamás al servicio de email para enviar el link
         await this.emailService.sendRestoreEmail(email, restoreLink);
 
-        //solo devolver token en modo test
-        const response: { message: string; token?: string } = {
-            message: 'Correo de restauración enviado correctamente',
-        };
-
-        if (process.env.NODE_ENV === 'test') {
-            response.token = token;
-        }
-
-        return response;
+        return { message: 'Correo de restauración enviado correctamente' };
     }
+
+    // // //test
+    // async requestPasswordReset(@Body('email') email: string): Promise<{ message: string; token?: string }> {
+    //     if (!email) {
+    //         throw new BadRequestException('El campo email es obligatorio');
+    //     }
+
+    //     const token = await this.authService.requestPasswordReset(email);
+    //     const restoreLink = `http://localhost:3000/restablecer-password?token=${token}`;
+
+    //     await this.emailService.sendRestoreEmail(email, restoreLink);
+
+    //     //solo devolver token en modo test
+    //     const response: { message: string; token?: string } = {
+    //         message: 'Correo de restauración enviado correctamente',
+    //     };
+
+    //     if (process.env.NODE_ENV === 'test') {
+    //         response.token = token;
+    //     }
+
+    //     return response;
+    // }
+
+
 
     @HttpCode(HttpStatus.OK)
     @Post('restablecer-password')
@@ -105,6 +109,12 @@ export class AuthController {
         @Body('token') token: string,
         @Body('newPassword') newPassword: string,
     ): Promise<{ message: string }> {
+        if (!token) {
+            throw new UnauthorizedException('Token no proporcionado');
+        }
+        if (!newPassword || newPassword.length < 8) {
+            throw new BadRequestException('La nueva contraseña es inválida o demasiado corta');
+        }
         await this.authService.resetPassword(token, newPassword);
         return { message: 'Password successfully reset' };
     }

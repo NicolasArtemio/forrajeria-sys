@@ -12,7 +12,8 @@ import { Repository, UpdateResult } from 'typeorm';
 import { UserRole } from '../common/enums/user-role.enum';
 import { BcryptHelper } from '../common/helpers/bcrypt.helper';
 import { Customer } from '../customer/entities/customer.entity';
-import { AuthService } from 'src/auth/auth.service';
+import { UpdateCustomerProfileDto } from './dto/update-user-self.dto';
+
 
 @Injectable()
 export class UsersService {
@@ -68,6 +69,10 @@ export class UsersService {
     return await this.userRepository.save(user);
   }
   async create(registerDto: RegisterDto): Promise<User> {
+    const exists = await this.userRepository.findOne({ where: { username: registerDto.username } });
+    if (exists) {
+      throw new BadRequestException('Username already exists');
+    }
     const hashedPassword = await BcryptHelper.hashPassword(registerDto.password);
 
     const newUser = this.userRepository.create({
@@ -110,21 +115,56 @@ export class UsersService {
   async findByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
   }
-  async update(id: number, updateUserDto: UpdateUserDto, role: UserRole): Promise<UpdateResult> {
-    if (role === UserRole.CUSTOMER) {
-      const { email, phone, password } = updateUserDto;
-      updateUserDto = {};
 
-      if (email) updateUserDto.email = email;
-      if (phone) updateUserDto.phone = phone;
-      if (password) {
-        // Asumí que ya viene hasheada
-        updateUserDto.password = password;
+  async updateCustomerProfile(userId: number, dto: UpdateCustomerProfileDto): Promise<Customer> {
+  const profile = await this.customerRepository.findOne({ where: { user: { id: userId } } });
+
+  if (!profile) {
+    throw new NotFoundException('Perfil de cliente no encontrado');
+  }
+
+  Object.assign(profile, dto);
+
+  return this.customerRepository.save(profile);
+}
+  async update(id: number, dto: UpdateUserDto, role: UserRole): Promise<UpdateResult> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    // Evitar duplicados
+    if (dto.username) {
+      const existing = await this.userRepository.findOne({ where: { username: dto.username } });
+      if (existing && existing.id !== id) {
+        throw new BadRequestException('El nombre de usuario ya está en uso');
       }
     }
 
-    return this.userRepository.update(id, updateUserDto);
+    if (dto.email) {
+      const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+      if (existing && existing.id !== id) {
+        throw new BadRequestException('El email ya está en uso');
+      }
+    }
+
+    // Filtrado manual si es CUSTOMER (ya deberías hacer esto en el controller igual)
+    if (role === UserRole.CUSTOMER) {
+      const allowedFields = ['email', 'phone', 'password'];
+      dto = Object.fromEntries(
+        Object.entries(dto).filter(([key]) => allowedFields.includes(key))
+      ) as UpdateUserDto;
+    }
+
+    // Validar que dto tenga campos para actualizar
+    if (!dto || Object.keys(dto).length === 0) {
+      throw new BadRequestException('No hay datos para actualizar');
+    }
+
+    return this.userRepository.update(id, dto);
   }
+
+
 
   async remove(
     id: number | string,
