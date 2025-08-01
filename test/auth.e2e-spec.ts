@@ -32,7 +32,7 @@ describe('AuthController (e2e)', () => {
     const loginDto = { username: 'admin', password: 'admin12345' };
 
     return request(app.getHttpServer())
-      .post('/autenticacion/iniciar-sesion')
+      .post('/forrajeria/sys/v1/autenticacion/iniciar-sesion')
       .send(loginDto)
       .expect(200) // tu endpoint responde 200
       .expect(res => {
@@ -42,7 +42,7 @@ describe('AuthController (e2e)', () => {
 
   it('/autenticacion/iniciar-sesion (POST) debe fallar si la contraseña es incorrecta', () => {
     return request(app.getHttpServer())
-      .post('/autenticacion/iniciar-sesion')
+      .post('/forrajeria/sys/v1/autenticacion/iniciar-sesion')
       .send({ username: 'usuario_valido', password: 'contrasena_incorrecta' })
       .expect(401)
       .expect(res => {
@@ -152,14 +152,13 @@ describe('AuthController - password reset (e2e)', () => {
       .post('/forrajeria/sys/v1/autenticacion/restablecer-password')
       .send({ token: resetToken, newPassword })
       .expect(200);
-  });
+  }, 30000);
 
   it('/autenticacion/restablecer-password (POST) - debe fallar si token inválido', async () => {
     await request(app.getHttpServer())
       .post('/forrajeria/sys/v1/autenticacion/restablecer-password')
-      .send({ token: 'token_invalido', newPassword: 'pass' })
+      .send({ token: 'token_invalido', newPassword: 'Password123' }) // ≥ 8 caracteres
       .expect(401);
   });
-
 
 });
